@@ -1,95 +1,76 @@
-import { AnyAction } from "redux";
-import { Product } from "./actionTypes";
+import {
+  ADD_TO_CART,
+  REMOVE_FROM_CART,
+  SET_PRODUCTS,
+  SHOW_PRODUCT,
+  REMOVE_ONE_CART,
+} from "./actionTypes";
+import { CartAction, Product } from "./cartActions";
 
-export interface CartInterface {
-  items: { product: Product; quantity: number }[];
+export interface CartState {
+  items: { [id: string]: Product };
+  products: Product[];
+  cart: Product[];
 }
 
-export const CartActionTypes = {
-  ADD_TO_CART: "ADD_TO_CART",
-  REMOVE_FROM_CART: "REMOVE_FROM_CART",
-  CLEAR_FROM_CART: "CLEAR_FROM_CART",
-  RESET_CART: "RESET_CART",
+const initialState: CartState = {
+  items: {},
+  products: [],
+  cart: [],
 };
 
-export const initialState: CartInterface = {
-  items: [],
-};
+let existingItem;
+let cartItem;
 
-// cart actions
-export const addItemToCart = (product: Product) => {
-  return {
-    type: CartActionTypes.ADD_TO_CART,
-    payload: {
-      product,
-    },
-  };
-};
-export const removeItemFromCart = (product: Product) => {
-  return {
-    type: CartActionTypes.REMOVE_FROM_CART,
-    payload: {
-      product,
-    },
-  };
-};
-
-export const clearItemFromCart = (product: Product) => {
-  return {
-    type: CartActionTypes.CLEAR_FROM_CART,
-    payload: {
-      product,
-    },
-  };
-};
-
-export const resetCart = () => {
-  return {
-    type: CartActionTypes.RESET_CART,
-  };
-};
-
-// cart reducer
-export default function cartReducer(state = initialState, action: AnyAction) {
+const cartReducer = (state = initialState, action: CartAction): CartState => {
   switch (action.type) {
-    case CartActionTypes.ADD_TO_CART:
-      let items = state.items;
-      const productIndex = items.findIndex(
-        (item) => item.product.id === action.payload.product.id
-      );
-      if (productIndex !== -1) {
-        items[productIndex].quantity += 1;
+    case SET_PRODUCTS:
+      return {
+        ...state,
+        products: action.payload,
+      };
+    case SHOW_PRODUCT:
+      return {
+        ...state,
+        items: { [action.payload.id]: action.payload },
+      };
+    case ADD_TO_CART:
+      existingItem = state.cart.find((item) => item.id === action.payload.id);
+      if (existingItem) {
+        return {
+          ...state,
+          cart: state.cart.map((item) =>
+            item.id === action.payload.id
+              ? { ...item, quantity: item.quantity + 1 }
+              : item
+          ),
+        };
       } else {
-        items.push({ product: action.payload.product, quantity: 1 });
+        return {
+          ...state,
+          cart: [...state.cart, { ...action.payload, quantity: 1 }],
+        };
       }
-      return { ...state, items };
-
-    case CartActionTypes.REMOVE_FROM_CART:
-      let newItems = state.items;
-      const itemIndex = newItems.findIndex(
-        (item) => item.product.id === action.payload.product.id
-      );
-      if (itemIndex === -1) return state;
-      if (newItems[itemIndex].quantity === 1) {
-        newItems.splice(itemIndex, 1);
-      } else {
-        newItems[itemIndex].quantity -= 1;
-      }
-      return { ...state, items: newItems };
-
-    case CartActionTypes.CLEAR_FROM_CART:
-      let cartItems = state.items;
-      const index = cartItems.findIndex(
-        (item) => item.product.id === action.payload.product.id
-      );
-      if (index === -1) return state;
-      cartItems.splice(index, 1);
-      return { ...state, items: cartItems };
-
-    case CartActionTypes.RESET_CART:
-      return { items: [] };
-
+      case REMOVE_ONE_CART:
+         cartItem = state.cart.find((item) => item.id === action.payload);
+        if (cartItem && cartItem.quantity > 1) {
+          return {
+            ...state,
+            cart: state.cart.map((item) =>
+              item.id === action.payload ? { ...item, quantity: item.quantity - 1 } : item
+            ),
+          };
+        } else {
+          return state;
+        }
+    case REMOVE_FROM_CART:
+      return {
+        ...state,
+        cart: state.cart.filter((item) => item.id !== action.payload),
+      };
     default:
       return state;
   }
-}
+};
+
+export default cartReducer;
